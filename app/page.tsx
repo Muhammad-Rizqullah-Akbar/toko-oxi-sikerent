@@ -1,65 +1,144 @@
-import Image from "next/image";
+// app/page.tsx
+// Halaman utama yang berisi Hero, Kategori, dan Katalog
+'use client'; 
 
-export default function Home() {
+import React, { useState } from 'react';
+
+// Import komponen UI/Layout
+import ProductCard from '../components/layout/ProductCard'; // Perhatikan lokasi folder product
+import Header from '../components/layout/Header';
+import HeroSection from '../components/layout/HeroSection';
+import CategoryCard from '../components/ui/CategoryCard';
+import Footer from '../components/layout/Footer';
+
+// Import ikon
+import { ChevronRight, ChevronLeft } from 'lucide-react'; 
+
+// =================================================================
+// DATA MOCK (TIRUAN)
+// =================================================================
+
+// Data mock untuk Kategori Produk
+const mockCategories = [
+    { name: 'Semua Produk', slug: 'all' },
+    { name: 'Produk A', slug: 'produk-a' },
+    { name: 'Produk B', slug: 'produk-b' },
+    { name: 'Produk C', slug: 'produk-c' },
+    { name: 'Produk D', slug: 'produk-d' },
+    { name: 'Edukasi', slug: 'edukasi' },
+    { name: 'Alat Kantor', slug: 'alat-kantor' },
+];
+
+// Data mock untuk Semua Produk (dengan field categorySlug)
+const allMockProducts = [
+    // Produk A
+    { id: 'A-1', name: 'Product A-1', price: 100000, imageUrl: '/images/product-a.jpg', categorySlug: 'produk-a' },
+    { id: 'A-2', name: 'Product A-2', price: 200000, imageUrl: '/images/product-a.jpg', categorySlug: 'produk-a' },
+    { id: 'A-3', name: 'Product A-3', price: 300000, imageUrl: '/images/product-a.jpg', categorySlug: 'produk-a' },
+    { id: 'Z-1', name: 'Produk Lain', price: 99000, imageUrl: '/images/product-z.jpg', categorySlug: 'produk-a' },
+    
+    // Produk B
+    { id: 'B-1', name: 'Product B-1', price: 150000, imageUrl: '/images/product-b.jpg', categorySlug: 'produk-b' },
+    { id: 'B-2', name: 'Product B-2', price: 250000, imageUrl: '/images/product-b.jpg', categorySlug: 'produk-b' },
+    { id: 'B-3', name: 'Product B-3', price: 350000, imageUrl: '/images/product-b.jpg', categorySlug: 'produk-b' },
+    
+    // Produk C
+    { id: 'C-1', name: 'Product C-1', price: 50000, imageUrl: '/images/product-c.jpg', categorySlug: 'produk-c' },
+    
+    // Produk Edukasi & Alat Kantor
+    { id: 'E-1', name: 'Buku Catatan', price: 25000, imageUrl: '/images/product-e.jpg', categorySlug: 'edukasi' },
+    { id: 'E-2', name: 'Pulpen Warna', price: 15000, imageUrl: '/images/product-e.jpg', categorySlug: 'edukasi' },
+    { id: 'AK-1', name: 'Stapler Besar', price: 45000, imageUrl: '/images/product-ak.jpg', categorySlug: 'alat-kantor' },
+    { id: 'AK-2', name: 'Kertas HVS', price: 60000, imageUrl: '/images/product-ak.jpg', categorySlug: 'alat-kantor' },
+];
+// =================================================================
+
+export default function HomePage() {
+  // State untuk melacak kategori yang sedang aktif. Defaultnya 'all'.
+  const [activeCategory, setActiveCategory] = useState('all');
+
+  // 1. FILTER PRODUK: Menggunakan activeCategory untuk memfilter data mock
+  const filteredProducts = activeCategory === 'all'
+    ? allMockProducts
+    : allMockProducts.filter(p => p.categorySlug === activeCategory);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      {/* 1. Sticky Navbar */}
+      <Header /> 
+      
+      {/* 2. Hero Section */}
+      <HeroSection /> 
+      
+      <main className="container mx-auto px-4 max-w-7xl">
+        
+        <hr className="mb-8 border-t-2 border-gray-200" /> 
+        
+        {/* 3. Kategori Produk A/B/C/D */}
+        <section className="mb-10 pt-4">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Kategori</h2>
+            
+            {/* Wrapper untuk Scroll Horizontal */}
+            <div className="flex items-center space-x-4 overflow-x-scroll pb-4 scrollbar-hide">
+                
+                {/* Tombol Panah Kiri (Opsional) */}
+                <button className="flex-shrink-0 p-2 border rounded-full shadow-md bg-white hover:bg-gray-100 hidden md:block">
+                    <ChevronLeft className="w-4 h-4 text-gray-600" />
+                </button>
+
+                {/* Mapping Kategori dengan filter dinamis */}
+                {mockCategories.map((item) => (
+                    <CategoryCard 
+                        key={item.slug} 
+                        name={item.name}
+                        slug={item.slug}
+                        isActive={activeCategory === item.slug} // Tentukan status aktif
+                        onClick={setActiveCategory} // Teruskan setter state
+                    />
+                ))}
+                
+                {/* Tombol Panah Kanan (Opsional) */}
+                <button className="flex-shrink-0 p-2 border rounded-full shadow-md bg-white hover:bg-gray-100 hidden md:block">
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+                
+            </div>
+            
+        </section>
+
+        {/* 4. Katalog Produk A */}
+        <section className="mb-12">
+          {/* Judul akan berubah sesuai kategori aktif */}
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+            Katalog {mockCategories.find(c => c.slug === activeCategory)?.name || 'Semua Produk'}
+          </h2>
+          
+          {/* Tampilan Grid menggunakan data yang sudah DIFILTER */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                imageUrl={product.imageUrl}
+              />
+            ))}
+            
+            {/* Tampilan jika tidak ada produk */}
+            {filteredProducts.length === 0 && (
+                <div className="col-span-full p-10 text-center bg-gray-50 border rounded-lg text-gray-600">
+                    Tidak ada produk dalam kategori ini. Silakan pilih kategori lain.
+                </div>
+            )}
+            
+          </div>
+        </section>
+
       </main>
-    </div>
+      
+      {/* 5. Footer */}
+      <Footer />
+    </>
   );
 }
