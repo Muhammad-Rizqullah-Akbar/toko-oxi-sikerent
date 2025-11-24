@@ -1,6 +1,6 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
-import ProductCard from '@/components/layout/ProductCard';
+import ProductCard from '@/components/products/ProductCard';
 import CategoryCard from '@/components/ui/CategoryCard';
 import Header from '@/components/layout/Header';
 import HeroSection from '@/components/layout/HeroSection';

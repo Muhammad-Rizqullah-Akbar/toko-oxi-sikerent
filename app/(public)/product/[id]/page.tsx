@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import ProductActions from '@/components/products/ProductActions'; // Import komponen langkah 1
-import ProductCard from '@/components/layout/ProductCard';
+import ProductCard from '@/components/products/ProductCard';
 import { ChevronRight, Star } from 'lucide-react';
 import ProductInfoTabs from '@/components/products/ProductInfoTabs'; // Import komponen baru
 
@@ -113,19 +113,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     <span className="text-sm font-normal text-gray-500 ml-1">/ hari</span>
                 </div>
 
-                {/* TABS VISUAL (Sesuai Wireframe) */}
-                <div className="border-b border-gray-200 mb-4">
-                    <div className="flex gap-6">
-                        <button className="pb-3 border-b-2 border-indigo-600 text-indigo-600 font-medium text-sm">Detail Produk</button>
-                        <button className="pb-3 border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium text-sm">Spesifikasi</button>
-                    </div>
-                </div>
-
-                {/* Deskripsi */}
-                <div className="prose prose-sm text-gray-600 mb-8 max-w-none">
-                    <p>{product.description || 'Tidak ada deskripsi detail untuk produk ini.'}</p>
-                    <p>Barang ini sangat cocok untuk kebutuhan event, tugas kuliah, atau keperluan kantor Anda. Pastikan cek ketersediaan sebelum menyewa.</p>
-                </div>
+               
                 
                 <ProductInfoTabs 
   description={product.description} 
