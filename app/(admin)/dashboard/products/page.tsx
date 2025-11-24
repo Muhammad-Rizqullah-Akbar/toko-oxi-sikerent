@@ -4,96 +4,96 @@ import { createProduct, deleteProduct } from '@/app/actions/product';
 import Image from 'next/image';
 
 export default async function ProductsPage() {
-  // 1. FETCH DATA (Paralel biar cepat)
   const [products, categories] = await Promise.all([
-    // Ambil Produk + Nama Kategorinya
     prisma.product.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { category: true } // JOIN tabel
+      include: { category: true }
     }),
-    // Ambil Kategori untuk Dropdown
     prisma.category.findMany({
       orderBy: { name: 'asc' }
     })
   ]);
 
+  // Class standar untuk semua input agar konsisten & gelap
+  const inputClass = "w-full border border-gray-300 rounded px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white";
+  const labelClass = "block text-sm font-bold text-gray-900 mb-1"; // Font tebal & hitam
+
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Manajemen Produk</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900">Manajemen Produk</h1>
 
       {/* FORM TAMBAH PRODUK */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8 border border-gray-100">
-        <h2 className="text-lg font-semibold mb-4 text-gray-700">Tambah Barang Baru</h2>
+      <div className="bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+        <h2 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Tambah Barang Baru</h2>
         
-        <form action={createProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form action={createProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Kolom Kiri */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
-              <input name="name" type="text" placeholder="Contoh: Kamera Canon DSLR" required className="w-full border rounded px-3 py-2" />
+              <label className={labelClass}>Nama Barang</label>
+              <input name="name" type="text" placeholder="Contoh: Kamera Canon DSLR" required className={inputClass} />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kode Barang</label>
-                  <input name="code" type="text" placeholder="BRG-00X" required className="w-full border rounded px-3 py-2" />
+                  <label className={labelClass}>Kode Barang</label>
+                  <input name="code" type="text" placeholder="BRG-00X" required className={inputClass} />
                </div>
                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stok Awal</label>
-                  <input name="stock" type="number" placeholder="0" required className="w-full border rounded px-3 py-2" />
+                  <label className={labelClass}>Stok Awal</label>
+                  <input name="stock" type="number" placeholder="0" required className={inputClass} />
                </div>
             </div>
-          </div>
 
-          
+            <div>
+                <label className={labelClass}>Deskripsi Produk</label>
+                <textarea 
+                    name="description" 
+                    rows={4} 
+                    className={inputClass} 
+                    placeholder="Jelaskan detail produk..."
+                ></textarea>
+            </div>
+          </div>
 
           {/* Kolom Kanan */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Harga Sewa / Satuan (Rp)</label>
-              <input name="price" type="number" placeholder="Contoh: 50000" required className="w-full border rounded px-3 py-2" />
+              <label className={labelClass}>Harga Sewa / Satuan (Rp)</label>
+              <input name="price" type="number" placeholder="Contoh: 50000" required className={inputClass} />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-              <select name="categoryId" required className="w-full border rounded px-3 py-2 bg-white">
-                <option value="">-- Pilih Kategori --</option>
+              <label className={labelClass}>Kategori</label>
+              <select name="categoryId" required className={inputClass}>
+                <option value="" className="text-gray-500">-- Pilih Kategori --</option>
                 {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id} className="text-gray-900">{cat.name}</option>
                 ))}
               </select>
             </div>
 
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Link Gambar (URL)</label>
-              <input name="imageUrl" type="text" placeholder="https://..." className="w-full border rounded px-3 py-2" />
-              <p className="text-xs text-gray-400 mt-1">*Bisa dikosongkan, nanti pakai placeholder</p>
+              <label className={labelClass}>Link Gambar (URL)</label>
+              <input name="imageUrl" type="text" placeholder="https://..." className={inputClass} />
+              <p className="text-xs text-gray-500 mt-1">*Bisa dikosongkan, nanti pakai placeholder</p>
             </div>
-          </div>
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi Produk</label>
-            <textarea 
-                name="description" 
-                rows={4} 
-                className="w-full border rounded px-3 py-2" 
-                placeholder="Jelaskan detail produk..."
-            ></textarea>
-        </div>
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Spesifikasi (Teknis)</label>
+                <label className={labelClass}>Spesifikasi (Teknis)</label>
                 <textarea 
                     name="specifications" 
                     rows={4} 
-                    className="w-full border rounded px-3 py-2" 
+                    className={inputClass} 
                     placeholder="Contoh: Berat: 5kg, Warna: Hitam..."
                 ></textarea>
             </div>
-        </div>
+          </div>
+
           {/* Tombol Submit Full Width */}
-          <div className="md:col-span-2 mt-2">
-            <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-medium">
+          <div className="md:col-span-2 mt-4 border-t pt-4">
+            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold text-lg shadow-md transition-transform hover:scale-[1.01]">
                 Simpan Produk
             </button>
           </div>
@@ -103,7 +103,7 @@ export default async function ProductsPage() {
       {/* TABEL DAFTAR PRODUK */}
       <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         <table className="w-full text-left">
-          <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
+          <thead className="bg-gray-100 text-gray-700 text-sm uppercase font-bold border-b border-gray-200">
             <tr>
               <th className="px-6 py-3">Produk</th>
               <th className="px-6 py-3">Kategori</th>
@@ -114,47 +114,48 @@ export default async function ProductsPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {products.map((product) => (
-              <tr key={product.id} className="hover:bg-gray-50">
+              <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-3">
                     {/* Gambar Kecil */}
-                    <div className="w-10 h-10 bg-gray-200 rounded overflow-hidden relative">
+                    <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden relative border border-gray-300 shrink-0">
                         {product.imageUrl ? (
                             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-xs text-gray-500">No img</div>
+                            <div className="flex items-center justify-center h-full text-xs text-gray-500 font-medium">No img</div>
                         )}
                     </div>
                     <div>
-                        <div className="font-medium text-gray-900">{product.name}</div>
-                        <div className="text-xs text-gray-500">{product.code}</div>
+                        <div className="font-bold text-gray-900 text-sm">{product.name}</div>
+                        <div className="text-xs text-gray-500 font-mono bg-gray-100 px-1 rounded inline-block mt-1">{product.code}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                    <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                <td className="px-6 py-4 text-sm text-gray-700">
+                    <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs px-2 py-1 rounded-full font-medium">
                         {product.category.name}
                     </span>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-indigo-600">
+                <td className="px-6 py-4 text-sm font-bold text-gray-900">
                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.price)}
                 </td>
                 <td className="px-6 py-4 text-center">
-                   {/* Logic Warna Stok */}
-                   <span className={`text-sm font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                   <span className={`text-sm font-bold px-2 py-1 rounded ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                      {product.stock}
                    </span>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <form action={deleteProduct.bind(null, product.id)}>
-                    <button className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
+                    <button className="text-red-600 hover:text-red-800 text-sm font-semibold hover:underline">Hapus</button>
                   </form>
                 </td>
               </tr>
             ))}
             {products.length === 0 && (
                 <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400">Belum ada produk.</td>
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic bg-gray-50">
+                        Belum ada produk. Silakan tambah di atas.
+                    </td>
                 </tr>
             )}
           </tbody>
