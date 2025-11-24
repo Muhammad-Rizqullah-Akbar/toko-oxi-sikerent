@@ -86,7 +86,6 @@ export default async function HomePage({ searchParams }: Props) {
                 name={product.name}
                 price={product.price}
                 imageUrl={product.imageUrl ?? ''}
-                stock={product.stock}
               />
             ))}
             
