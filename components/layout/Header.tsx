@@ -35,13 +35,13 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 max-w-7xl py-3 flex items-center space-x-4">
         
         {/* 1. Nama Toko/Branding */}
-        <h1 className="text-xl font-bold text-indigo-700 flex-shrink-0">
+        <h1 className="text-xl font-bold text-indigo-700 flex shrink-0">
             TOKO OXI
         </h1>
         
         {/* 2. Search Bar Kecil (MERAPAT KE KIRI) */}
         {/* Kita menggunakan 'flex-grow' di div search bar agar mengambil ruang kosong sebanyak mungkin */}
-        <div className="flex-grow max-w-lg relative"> 
+        <div className="flex grow max-w-lg relative"> 
             <input 
                 type="text" 
                 placeholder="Cari produk di TOKO OXI..." 
@@ -52,7 +52,7 @@ const Header: React.FC = () => {
         </div>
         
         {/* 3. Ikon Aksi (Keranjang) dan Tombol Sign In (MERAPAT KE KANAN) */}
-        <div className="flex items-center space-x-3 flex-shrink-0">
+        <div className="flex items-center space-x-3 shrink-0">
           
           {/* Ikon Keranjang */}
           <button className="p-2 rounded-full hover:bg-gray-100 transition-colors border border-transparent hover:border-indigo-300">
