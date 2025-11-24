@@ -1,0 +1,138 @@
+// prisma/schema.prisma (VERSI DINAMIS)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// 1. HAPUS BAGIAN "enum Category" (Supaya tidak terkunci)
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  DIPROSES
+  DISEWA
+  SELESAI
+  BATAL
+  TERLAMBAT
+}
+
+// ==========================================
+// 2. BUAT TABEL BARU UNTUK KATEGORI
+// ==========================================
+model Category {
+  id        String    @id @default(cuid())
+  name      String    // Nama Kategori (Bisa ditambah admin kapan saja)
+  slug      String    @unique // Untuk URL (misal: /kategori/elektronik)
+  
+  // Relasi: Kategori ini dipakai oleh produk apa saja?
+  products  Product[]
+  
+  createdAt DateTime  @default(now())
+}
+
+// ==========================================
+// 3. UPDATE PRODUK AGAR TERHUBUNG KE TABEL KATEGORI
+// ==========================================
+model Product {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  slug        String   @unique
+  price       Int
+  stock       Int      @default(0)
+  
+  // PERUBAHAN PENTING:
+  // Dulu: category Category (Enum) -> Kaku
+  // Sekarang: category Category (Relasi) -> Dinamis
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  
+  imageUrl    String?
+  description String?
+  specifications String?
+  rentalItems RentalItem[]
+  reviews     Review[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==========================================
+// MODEL LAINNYA (TIDAK BERUBAH)
+// ==========================================
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      Role     @default(STAFF)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  whatsapp    String   @unique
+  totalPoints Int      @default(0)
+  rentals     RentalOrder[]
+  prints      PrintOrder[]
+  createdAt   DateTime @default(now())
+}
+
+model RentalOrder {
+  id            String      @id @default(cuid())
+  invoiceCode   String      @unique
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  startDate     DateTime
+  dueDate       DateTime
+  returnDate    DateTime?
+  totalPrice    Int
+  status        OrderStatus @default(PENDING)
+  items         RentalItem[]
+  createdAt     DateTime    @default(now())
+}
+
+model RentalItem {
+  id            String      @id @default(cuid())
+  rentalId      String
+  rental        RentalOrder @relation(fields: [rentalId], references: [id])
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  priceAtRental Int
+}
+
+model PrintOrder {
+  id          String      @id @default(cuid())
+  invoiceCode String      @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  fileUrl     String
+  serviceType String
+  pageCount   Int         @default(1)
+  totalPrice  Int
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  isVisible Boolean  @default(true)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+}

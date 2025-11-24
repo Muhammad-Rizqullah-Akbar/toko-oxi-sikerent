@@ -1,40 +1,43 @@
 // components/ui/CategoryCard.tsx
-
 import React from 'react';
 import Link from 'next/link';
 
 interface CategoryCardProps {
   name: string;
-  slug: string; // Menggunakan slug untuk identifikasi
-  isActive: boolean; // Prop baru untuk status aktif
-  onClick: (slug: string) => void; // Prop baru untuk handle klik
+  slug: string;
+  isActive: boolean;
 }
 
-// Kita tidak lagi menggunakan Link, karena kita hanya memfilter di halaman yang sama
-const CategoryCard: React.FC<CategoryCardProps> = ({ name, slug, isActive, onClick }) => {
+const CategoryCard: React.FC<CategoryCardProps> = ({ name, slug, isActive }) => {
+  // Jika slug 'all', link ke root. Jika tidak, link ke query param
+  const href = slug === 'all' ? '/' : `/?category=${slug}`;
+
   return (
-    // Tambahkan onClick handler dan styling aktif di sini
-    <div 
-      onClick={() => onClick(slug)}
+    <Link 
+      href={href}
       className={`
-        flex-shrink-0 w-32 h-36 bg-white border rounded-xl shadow-md p-2 text-center flex flex-col justify-end 
+        flex-shrink-0 w-32 h-24 sm:h-28 bg-white border rounded-xl shadow-sm p-3 text-center flex flex-col items-center justify-center
         transition-all duration-200 cursor-pointer group
         ${isActive 
-            ? 'shadow-lg border-indigo-500 ring-2 ring-indigo-500' // Styling aktif
-            : 'border-gray-200 hover:shadow-lg hover:border-indigo-300' // Styling normal
+            ? 'border-indigo-600 ring-2 ring-indigo-100 bg-indigo-50' 
+            : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
         }
       `}
     >
-      
-      {/* Placeholder Gambar Kategori */}
-      <div className="w-full h-2/3 bg-gray-100 rounded-md mx-auto mb-2 group-hover:bg-gray-200 transition-colors"></div>
+      {/* Icon Placeholder (Bisa diganti icon dinamis nanti) */}
+      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-2 flex items-center justify-center text-sm font-bold
+        ${isActive ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-indigo-100 group-hover:text-indigo-600'}
+      `}>
+        {name.charAt(0)}
+      </div>
       
       {/* Nama Kategori */}
-      <span className="text-sm font-medium text-gray-800">{name}</span>
-      
-      {/* Garis Indikator Bawah (HANYA MUNCUL KETIKA AKTIF) */}
-      <div className={`h-1 rounded-full mt-1 ${isActive ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
-    </div>
+      <span className={`text-xs sm:text-sm font-medium line-clamp-2
+        ${isActive ? 'text-indigo-700' : 'text-gray-700 group-hover:text-indigo-600'}
+      `}>
+        {name}
+      </span>
+    </Link>
   );
 };
 
