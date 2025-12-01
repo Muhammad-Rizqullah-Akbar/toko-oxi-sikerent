@@ -1,4 +1,4 @@
-// prisma/schema.prisma (VERSI DINAMIS)
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -10,64 +10,86 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// 1. HAPUS BAGIAN "enum Category" (Supaya tidak terkunci)
+// ==========================================
+// ENUMS
+// ==========================================
+
 enum Role {
   ADMIN
   STAFF
 }
 
 enum OrderStatus {
-  PENDING
-  DIPROSES
-  DISEWA
-  SELESAI
-  BATAL
-  TERLAMBAT
+  PENDING         // Menunggu Pembayaran / Verifikasi
+  PAID            // Sudah Bayar (Verified)
+  DIPROSES        // Sedang disiapkan (Barang/Cetak)
+  DISEWA          // Barang sedang dibawa customer
+  SELESAI         // Sudah dikembalikan / Diambil
+  BATAL           // Dibatalkan
+  TERLAMBAT       // Telat kembali
 }
 
 // ==========================================
-// 2. BUAT TABEL BARU UNTUK KATEGORI
+// 1. TABEL UTAMA: ORDER (TRANSAKSI INDUK)
+// ==========================================
+model Order {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relasi ke Customer (Siapa yang bayar)
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+
+  // Data Pembayaran
+  totalAmount   Int         // Total Uang Masuk (Harga + Kode Unik)
+  uniqueCode    Int         @default(0) // Menyimpan 3 digit kode unik terpisah
+  senderName    String?     // Nama pengirim di rekening
+  proofImage    String?     // URL Bukti Transfer
+  
+  status        OrderStatus @default(PENDING) 
+
+  // Relasi ke Anak-anaknya (Detail Pesanan)
+  rentalOrders  RentalOrder[]
+  printOrders   PrintOrder[]
+
+  @@map("orders") // Nama tabel di database fisik
+}
+
+// ==========================================
+// 2. KATEGORI & PRODUK (DINAMIS)
 // ==========================================
 model Category {
   id        String    @id @default(cuid())
-  name      String    // Nama Kategori (Bisa ditambah admin kapan saja)
-  slug      String    @unique // Untuk URL (misal: /kategori/elektronik)
-  
-  // Relasi: Kategori ini dipakai oleh produk apa saja?
+  name      String
+  slug      String    @unique
   products  Product[]
-  
   createdAt DateTime  @default(now())
 }
 
-// ==========================================
-// 3. UPDATE PRODUK AGAR TERHUBUNG KE TABEL KATEGORI
-// ==========================================
 model Product {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  slug        String   @unique
-  price       Int
-  stock       Int      @default(0)
+  id             String       @id @default(cuid())
+  code           String       @unique
+  name           String
+  slug           String       @unique
+  price          Int
+  stock          Int          @default(0)
   
-  // PERUBAHAN PENTING:
-  // Dulu: category Category (Enum) -> Kaku
-  // Sekarang: category Category (Relasi) -> Dinamis
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId     String
+  category       Category     @relation(fields: [categoryId], references: [id])
   
-  imageUrl    String?
-  description String?
+  imageUrl       String?
+  description    String?
   specifications String?
-  rentalItems RentalItem[]
-  reviews     Review[]
+  rentalItems    RentalItem[]
+  reviews        Review[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 // ==========================================
-// MODEL LAINNYA (TIDAK BERUBAH)
+// 3. USER (ADMIN/STAFF)
 // ==========================================
 
 model User {
@@ -80,21 +102,39 @@ model User {
   createdAt DateTime @default(now())
 }
 
+// ==========================================
+// 4. CUSTOMER (PELANGGAN) - Diperbarui untuk Auth
+// ==========================================
+
 model Customer {
-  id          String   @id @default(cuid())
-  name        String
-  whatsapp    String   @unique
-  totalPoints Int      @default(0)
-  rentals     RentalOrder[]
-  prints      PrintOrder[]
-  createdAt   DateTime @default(now())
+  id            String      @id @default(cuid())
+  name          String
+  whatsapp      String      @unique
+  email         String?     @unique // Opsional, tapi unik
+  password      String?     // Field untuk menyimpan password hash
+  totalPoints   Int         @default(0)
+  
+  orders        Order[] 
+  rentals       RentalOrder[] 
+  prints        PrintOrder[] 
+  
+  createdAt     DateTime    @default(now())
 }
+
+// ==========================================
+// 5. DETAIL RENTAL
+// ==========================================
 
 model RentalOrder {
   id            String      @id @default(cuid())
   invoiceCode   String      @unique
+  
   customerId    String
   customer      Customer    @relation(fields: [customerId], references: [id])
+  
+  orderId       String?     
+  order         Order?      @relation(fields: [orderId], references: [id])
+
   startDate     DateTime
   dueDate       DateTime
   returnDate    DateTime?
@@ -114,18 +154,31 @@ model RentalItem {
   priceAtRental Int
 }
 
+// ==========================================
+// 6. DETAIL PRINTING
+// ==========================================
+
 model PrintOrder {
-  id          String      @id @default(cuid())
-  invoiceCode String      @unique
-  customerId  String
-  customer    Customer    @relation(fields: [customerId], references: [id])
-  fileUrl     String
-  serviceType String
-  pageCount   Int         @default(1)
-  totalPrice  Int
-  status      OrderStatus @default(PENDING)
-  createdAt   DateTime    @default(now())
+  id            String      @id @default(cuid())
+  invoiceCode   String      @unique
+  
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+
+  orderId       String?
+  order         Order?      @relation(fields: [orderId], references: [id])
+
+  fileUrl       String      // File Desain Produk
+  serviceType   String
+  pageCount     Int         @default(1)
+  totalPrice    Int
+  status        OrderStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
 }
+
+// ==========================================
+// 7. REVIEW PRODUK
+// ==========================================
 
 model Review {
   id        String   @id @default(cuid())
@@ -135,4 +188,36 @@ model Review {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 8. PESAN MASUK (CONTACT US)
+// ==========================================
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text 
+  isRead    Boolean  @default(false) 
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 9. METODE PEMBAYARAN (DINAMIS)
+// ==========================================
+
+model PaymentMethod {
+  id          String   @id @default(cuid())
+  name        String   
+  number      String   
+  owner       String?  
+  type        String   // BANK, EWALLET, QRIS
+  logo        String?
+  instructions String? 
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
