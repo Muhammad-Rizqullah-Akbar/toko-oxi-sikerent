@@ -1,29 +1,47 @@
-// auth-types.d.ts
+// types/auth-types.d.ts
 
-// Augmentasi tipe untuk JWT dan Session
-import 'next-auth/jwt';
-import { DefaultSession, DefaultUser } from 'next-auth';
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      type: "user" | "customer";
+      role?: string; // Role hanya untuk user, optional untuk customer
+    } & DefaultSession["user"];
+  }
 
-// --- Interface untuk User/AdapterUser (dari fungsi authorize) ---
-// Kita perlu mendefinisikan role untuk digunakan di JWT
-interface CustomUser extends DefaultUser {
+  interface User {
+    type: "user" | "customer";
+    role?: string; // Optional karena customer tidak punya role
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
     id: string;
-    role?: 'customer' | 'admin' | 'staff'; // Tambahkan role Anda
+    type: "user" | "customer";
+    role?: string; // Optional
+  }
 }
 
-// --- Modifikasi Tipe Session ---
-// Tipe ini digunakan saat memanggil 'session' di frontend atau di Server Component
-declare module 'next-auth' {
-    interface Session extends DefaultSession {
-        user: CustomUser & DefaultSession['user'];
-    }
+// Types untuk aplikasi
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  username: string;
+  role: string; // ADMIN atau STAFF
+  lastLogin: Date | null;
 }
 
-// --- Modifikasi Tipe JWT ---
-// Tipe ini digunakan di JWT token (cookie)
-declare module 'next-auth/jwt' {
-    interface JWT {
-        id: string; // [FIX 2] Tambahkan id ke JWT
-        role?: 'customer' | 'admin' | 'staff'; // [FIX 1] Tambahkan role ke JWT
-    }
+export interface AuthCustomer {
+  id: string;
+  name: string;
+  whatsapp: string;
+  email: string | null;
+  totalPoints: number;
+  isVerified: boolean;
+  lastLogin: Date | null;
+  createdAt: Date;
+  // TIDAK ADA ROLE!
 }

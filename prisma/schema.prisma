@@ -11,7 +11,7 @@ datasource db {
 }
 
 // ==========================================
-// ENUMS
+// ENUMS (TAMBAHAN BARU: CartItemType)
 // ==========================================
 
 enum Role {
@@ -20,204 +20,413 @@ enum Role {
 }
 
 enum OrderStatus {
-  PENDING         // Menunggu Pembayaran / Verifikasi
-  PAID            // Sudah Bayar (Verified)
-  DIPROSES        // Sedang disiapkan (Barang/Cetak)
-  DISEWA          // Barang sedang dibawa customer
-  SELESAI         // Sudah dikembalikan / Diambil
-  BATAL           // Dibatalkan
-  TERLAMBAT       // Telat kembali
+  PENDING
+  PAID
+  DIPROSES
+  DISEWA
+  SELESAI
+  BATAL
+  TERLAMBAT
+}
+
+enum UnitCondition {
+  BAIK
+  BARU
+  MINOR_DAMAGE
+  PERLU_SERVICE
+  RUSAK_BERAT
+}
+
+enum UnitStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  SOLD
+}
+
+// [BARU] Untuk membedakan item di keranjang
+enum CartItemType {
+  PRODUCT // Jual beli putus (Inventaris biasa)
+  RENTAL  // Barang sewaan
+  SERVICE // Jasa (seperti Printing)
 }
 
 // ==========================================
-// 1. TABEL UTAMA: ORDER (TRANSAKSI INDUK)
+// 1. TABEL UTAMA: ORDER
 // ==========================================
 model Order {
-  id            String      @id @default(cuid())
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Relasi ke Customer (Siapa yang bayar)
-  customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  // Data Pembayaran
-  totalAmount   Int         // Total Uang Masuk (Harga + Kode Unik)
-  uniqueCode    Int         @default(0) // Menyimpan 3 digit kode unik terpisah
-  senderName    String?     // Nama pengirim di rekening
-  proofImage    String?     // URL Bukti Transfer
-  
-  status        OrderStatus @default(PENDING) 
+  totalAmount   Decimal @db.Decimal(10, 2)
+  uniqueCode    Int     @default(0)
+  senderName    String?
+  proofImage    String?
+  paymentMethod String?
 
-  // Relasi ke Anak-anaknya (Detail Pesanan)
-  rentalOrders  RentalOrder[]
-  printOrders   PrintOrder[]
+  status        OrderStatus @default(PENDING)
+  createdBy     String?
+  createdByUser User?       @relation("CreatedOrders", fields: [createdBy], references: [id])
+  verifiedBy    String?
+  verifiedByUser User?      @relation("VerifiedOrders", fields: [verifiedBy], references: [id])
+  verifiedAt    DateTime?
 
-  @@map("orders") // Nama tabel di database fisik
+  rentalOrders RentalOrder[]
+  printOrders  PrintOrder[]
+
+  @@index([createdAt])
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
 }
 
 // ==========================================
-// 2. KATEGORI & PRODUK (DINAMIS)
+// 2. KATEGORI & PRODUK
 // ==========================================
 model Category {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  slug      String    @unique
+  slug      String   @unique
+  imageUrl  String?
+  isActive  Boolean  @default(true)
   products  Product[]
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
 }
 
 model Product {
-  id             String       @id @default(cuid())
-  code           String       @unique
-  name           String
-  slug           String       @unique
-  price          Int
-  stock          Int          @default(0)
-  
-  categoryId     String
-  category       Category     @relation(fields: [categoryId], references: [id])
-  
+  id    String  @id @default(cuid())
+  code  String  @unique
+  name  String
+  slug  String  @unique
+  price Decimal @db.Decimal(10, 2)
+  stock Int     @default(0)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   imageUrl       String?
   description    String?
   specifications String?
+  isActive       Boolean @default(true)
+  isFeatured     Boolean @default(false)
+
   rentalItems    RentalItem[]
   reviews        Review[]
+  inventoryUnits InventoryUnit[]
+  wishlistedBy   Wishlist[]
+  CartItem       CartItem[] // Relasi ke Cart
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([slug])
+}
+
+model InventoryUnit {
+  id        String   @id @default(cuid())
+  unitCode  String   @unique
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  condition   UnitCondition @default(BAIK)
+  status      UnitStatus    @default(AVAILABLE)
+  location    String?
+  notes       String?
+  lastService DateTime?
+  nextService DateTime?
+
+  rentalHistories RentalHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitCode])
+  @@index([productId])
 }
 
 // ==========================================
-// 3. USER (ADMIN/STAFF)
+// 3. USER (ADMIN/STAFF) & CONFIG
 // ==========================================
-
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
   password  String
   name      String
+  email     String?  @unique
   role      Role     @default(STAFF)
   isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdOrders  Order[] @relation("CreatedOrders")
+  verifiedOrders Order[] @relation("VerifiedOrders")
+
+  pushSubscriptions PushSubscription[]
+  updatedRewardPolicies RewardPolicy[]
+  updatedPaymentMethods PaymentMethod[]
+
+  @@index([username])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  endpoint  String   @unique
+  keys      Json
   createdAt DateTime @default(now())
 }
 
-// ==========================================
-// 4. CUSTOMER (PELANGGAN) - Diperbarui untuk Auth
-// ==========================================
+model RewardPolicy {
+  id             String   @id @default(cuid())
+  earningRate    Float    @default(1)
+  redemptionRate Float    @default(100)
+  minRedeem      Int      @default(1000)
+  isActive       Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+  updatedBy      String?
+  updatedByUser  User?    @relation(fields: [updatedBy], references: [id])
+}
 
+// ==========================================
+// 4. CUSTOMER
+// ==========================================
 model Customer {
-  id            String      @id @default(cuid())
-  name          String
-  whatsapp      String      @unique
-  email         String?     @unique // Opsional, tapi unik
-  password      String?     // Field untuk menyimpan password hash
-  totalPoints   Int         @default(0)
-  
-  orders        Order[] 
-  rentals       RentalOrder[] 
-  prints        PrintOrder[] 
-  
-  createdAt     DateTime    @default(now())
+  id          String  @id @default(cuid())
+  name        String
+  whatsapp    String  @unique
+  email       String? @unique
+  password    String?
+  totalPoints Int     @default(0)
+  isVerified  Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  orders          Order[]
+  rentals         RentalOrder[]
+  prints          PrintOrder[]
+  wishlist        Wishlist[]
+  rentalHistories RentalHistory[]
+  reviews         Review[]
+  Cart            Cart? // One-to-one dengan Cart
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime?
+
+  @@index([whatsapp])
+  @@index([email])
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
 }
 
 // ==========================================
 // 5. DETAIL RENTAL
 // ==========================================
-
 model RentalOrder {
-  id            String      @id @default(cuid())
-  invoiceCode   String      @unique
-  
-  customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
-  
-  orderId       String?     
-  order         Order?      @relation(fields: [orderId], references: [id])
+  id          String      @id @default(cuid())
+  invoiceCode String      @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?      @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  startDate     DateTime
-  dueDate       DateTime
-  returnDate    DateTime?
-  totalPrice    Int
-  status        OrderStatus @default(PENDING)
-  items         RentalItem[]
-  createdAt     DateTime    @default(now())
+  startDate   DateTime
+  dueDate     DateTime
+  returnDate  DateTime?
+
+  totalPrice  Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+
+  items           RentalItem[]
+  rentalHistories RentalHistory[]
+
+  notes     String?
+  lateFee   Decimal? @db.Decimal(10, 2)
+  damageFee Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RentalItem {
   id            String      @id @default(cuid())
   rentalId      String
-  rental        RentalOrder @relation(fields: [rentalId], references: [id])
+  rental        RentalOrder @relation(fields: [rentalId], references: [id], onDelete: Cascade)
   productId     String
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Int
-  priceAtRental Int
+  priceAtRental Decimal     @db.Decimal(10, 2)
+  unitIds       String[] // Menyimpan ID fisik unit yang disewa
+
+  @@index([rentalId])
 }
 
 // ==========================================
 // 6. DETAIL PRINTING
 // ==========================================
-
 model PrintOrder {
-  id            String      @id @default(cuid())
-  invoiceCode   String      @unique
-  
-  customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
+  id          String      @id @default(cuid())
+  invoiceCode String      @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?      @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  orderId       String?
-  order         Order?      @relation(fields: [orderId], references: [id])
+  fileUrl     String
+  serviceType String
+  pageCount   Int         @default(1)
+  paperType   String?
+  colorMode   String?
+  copies      Int         @default(1)
 
-  fileUrl       String      // File Desain Produk
-  serviceType   String
-  pageCount     Int         @default(1)
-  totalPrice    Int
-  status        OrderStatus @default(PENDING)
-  createdAt     DateTime    @default(now())
-}
+  totalPrice  Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  notes       String?
 
-// ==========================================
-// 7. REVIEW PRODUK
-// ==========================================
-
-model Review {
-  id        String   @id @default(cuid())
-  rating    Int
-  comment   String?
-  isVisible Boolean  @default(true)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==========================================
-// 8. PESAN MASUK (CONTACT US)
+// 7. REVIEW & PESAN
 // ==========================================
+model Review {
+  id         String   @id @default(cuid())
+  rating     Int
+  comment    String?
+  isVisible  Boolean  @default(true)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
 
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String
   email     String
+  phone     String?
   subject   String
-  message   String   @db.Text 
-  isRead    Boolean  @default(false) 
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==========================================
-// 9. METODE PEMBAYARAN (DINAMIS)
+// 8. METODE PEMBAYARAN
 // ==========================================
-
 model PaymentMethod {
-  id          String   @id @default(cuid())
-  name        String   
-  number      String   
-  owner       String?  
-  type        String   // BANK, EWALLET, QRIS
-  logo        String?
-  instructions String? 
-  isActive    Boolean  @default(true)
-  
+  id           String  @id @default(cuid())
+  name         String
+  number       String
+  owner        String?
+  type         String
+  logo         String?
+  instructions String?
+  isAutomatic  Boolean @default(false)
+  isActive     Boolean @default(true)
+  orderIndex   Int     @default(0)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  updatedBy   String?
+  updatedByUser User?    @relation(fields: [updatedBy], references: [id])
+}
+
+// ==========================================
+// 9. HISTORY
+// ==========================================
+model RentalHistory {
+  id         String        @id @default(cuid())
+  unitId     String
+  unit       InventoryUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  rentalId   String
+  rental     RentalOrder   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  rentedAt        DateTime
+  returnedAt      DateTime?
+  conditionBefore UnitCondition
+  conditionAfter  UnitCondition?
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+// ==========================================
+// 10. KERANJANG BELANJA (CART) - DIPERBARUI
+// ==========================================
+
+model Cart {
+  id         String    @id @default(cuid())
+  
+  // Cart di DB hanya untuk user yang login
+  customerId String    @unique 
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  quantity  Int      @default(1)
+  
+  // [PENTING] Menentukan ini item Rental, Service (Print), atau Beli biasa
+  itemType  CartItemType @default(PRODUCT)
+
+  // --- Field Khusus Rental ---
+  startDate DateTime? // Tanggal mulai sewa (opsional jika bukan rental)
+  endDate   DateTime? // Tanggal kembali (opsional)
+
+  // --- Field Khusus Printing ---
+  fileUrl   String?
+  serviceType String? // e.g., "Print A4", "Jilid"
+  pageCount Int?
+  paperType String?   // e.g., "HVS 70gr", "Art Paper"
+  colorMode String?   // e.g., "BW", "Color"
+  
+  // Catatan umum
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // CATATAN: Saya menghapus @@unique([cartId, productId]) 
+  // Karena user mungkin menyewa "Kamera A" tgl 1, dan "Kamera A" lagi tgl 20.
+  // Itu dihitung 2 item berbeda dalam 1 cart.
+  
+  @@index([cartId])
+  @@index([productId])
 }

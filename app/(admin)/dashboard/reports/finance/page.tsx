@@ -1,170 +1,164 @@
-// app/admin/reports/finance/page.tsx
+'use client';
 
-import React from 'react';
-import { DollarSign, BarChart, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, TrendingUp, Clock, ShoppingBag, Loader2, RefreshCcw } from 'lucide-react';
+import { getFinanceData } from '@/app/actions/admin/finance';
 
-// PASTIKAN PATH INI BENAR SESUAI LOKASI FILE ANDA
-import SalesTrendChart from '../../../../../components/ui/admin/SalesTrendChart'; 
-import ProfitDistributionChart from '../../../../../components/ui/admin/ProfitDistributionChart'; // <-- IMPORT GRAFIK DONUT
+export default function FinancePage() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
 
-// =================================================================
-// KOMPONEN STAT CARD (LOKAL) - TIDAK BERUBAH
-// =================================================================
+  const loadData = async () => {
+    setLoading(true);
+    const res = await getFinanceData();
+    setData(res);
+    setLoading(false);
+  };
 
-type StatCardProps = {
-    title: string;
-    value: string;
-    icon: React.ElementType;
-    change: string;
-    color: 'green' | 'red' | 'blue' | 'yellow';
-    description: string;
-};
+  useEffect(() => {
+    loadData();
+  }, []);
 
-const colorMap = {
-    green: 'text-green-600 bg-green-100',
-    red: 'text-red-600 bg-red-100',
-    blue: 'text-blue-600 bg-blue-100',
-    yellow: 'text-yellow-600 bg-yellow-100',
-};
-
-function StatCard({ title, value, icon: Icon, change, color, description }: StatCardProps) {
-    const TrendIcon = color === 'green' ? TrendingUp : color === 'red' ? TrendingDown : BarChart;
-    const colorTextClass = colorMap[color].split(' ')[0];
-    const trendTextColorClass = (color === 'green' || color === 'red') ? colorTextClass : 'text-gray-500';
-
+  if (loading) {
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col gap-2 transition-transform hover:scale-[1.01] duration-300">
-            {/* Ikon */}
-            <div className={`w-10 h-10 flex items-center justify-center rounded-full ${colorMap[color]} mb-2`}>
-                <Icon className={`w-6 h-6 ${colorTextClass}`} />
+      <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+        <Loader2 className="w-8 h-8 animate-spin mb-2 text-indigo-600" />
+        <p>Sedang menghitung duit...</p>
+      </div>
+    );
+  }
+
+  // Format Rupiah Helper
+  const rp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8">
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-800">Laporan Keuangan</h1>
+            <p className="text-gray-500 text-sm">Ringkasan pendapatan dari transaksi rental & cetak.</p>
+        </div>
+        <button onClick={loadData} className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm" title="Refresh Data">
+            <RefreshCcw size={20} />
+        </button>
+      </div>
+
+      {/* 1. KARTU STATISTIK UTAMA */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Revenue */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 flex items-start gap-4 relative overflow-hidden">
+            <div className="p-3 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-200 z-10">
+                <DollarSign size={24} />
             </div>
-            
-            <div className="text-xs text-gray-500 font-medium">{title}</div>
-            <div className="text-2xl font-bold text-gray-800">{value}</div>
-            
-            {/* Baris Change */}
-            <div className="flex items-center gap-2 text-sm">
-                {/* Ikon Tren */}
-                <TrendIcon className={`w-4 h-4 ${trendTextColorClass}`} /> 
-                {/* Persentase/Nilai Perubahan */}
-                <span className={`${trendTextColorClass} font-semibold`}>{change}</span>
-                {/* Deskripsi Tambahan */}
-                <span className="text-gray-400">{description}</span>
+            <div className="z-10">
+                <p className="text-sm font-medium text-slate-500">Total Pendapatan (Masuk)</p>
+                <h3 className="text-2xl font-bold text-slate-800 mt-1">{rp(data.totalRevenue)}</h3>
+            </div>
+            {/* Dekorasi Background */}
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 rounded-full opacity-50" />
+        </div>
+
+        {/* Potential Revenue */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100 flex items-start gap-4">
+            <div className="p-3 bg-amber-100 rounded-xl text-amber-600">
+                <Clock size={24} />
+            </div>
+            <div>
+                <p className="text-sm font-medium text-slate-500">Potensi (Menunggu Bayar)</p>
+                <h3 className="text-2xl font-bold text-slate-800 mt-1">{rp(data.potentialRevenue)}</h3>
             </div>
         </div>
-    );
-}
 
-// =================================================================
-// DATA MOCK - TIDAK BERUBAH
-// =================================================================
-const mockTopProducts = [
-    { name: 'Sewa Toga Baru Unhas', units: 45, revenue: 6750000 },
-    { name: 'Almamater Unhas (Bahan Drill)', units: 20, revenue: 4000000 },
-    { name: 'Papan Akrilik Berlogo', units: 80, revenue: 3500000 },
-    { name: 'Jilid Skripsi', units: 150, revenue: 2250000 },
-];
-
-
-export default function FinancialReportPage() {
-    return (
-        <div className="space-y-8">
-            
-            {/* 1. KARTU METRIK UTAMA (TIDAK BERUBAH) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard 
-                    title="Total Revenue"
-                    value="Rp 15.25 Jt"
-                    icon={DollarSign}
-                    change="+12.5%"
-                    color="green"
-                    description="vs Bulan Lalu"
-                />
-                <StatCard 
-                    title="Biaya Operasional"
-                    value="Rp 3.10 Jt"
-                    icon={TrendingDown}
-                    change="-4.2%"
-                    color="red"
-                    description="vs Bulan Lalu"
-                />
-                <StatCard 
-                    title="Laba Bersih"
-                    value="Rp 12.15 Jt"
-                    icon={BarChart}
-                    change="+18.8%"
-                    color="blue"
-                    description="vs Target"
-                />
-                <StatCard 
-                    title="Piutang (Tempo)"
-                    value="Rp 750 Rb"
-                    icon={Clock}
-                    change="2 Transaksi"
-                    color="yellow"
-                    description="Perlu ditagih"
-                />
+        {/* Total Orders */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-start gap-4">
+            <div className="p-3 bg-emerald-100 rounded-xl text-emerald-600">
+                <ShoppingBag size={24} />
             </div>
-
-            {/* 2. VISUALISASI DATA (Grafik & Ringkasan Performa) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Grafik Utama (Tren Pendapatan) */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-                    <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Tren Penjualan Tahunan</h3>
-                    
-                    {/* INTEGRASI GRAFIK TREN */}
-                    <SalesTrendChart />
-                    
-                    <div className='mt-4 text-xs text-gray-500'>
-                        Analisis menunjukkan pertumbuhan stabil 15% sejak awal kuartal.
-                    </div>
-                </div>
-
-                {/* Ringkasan Biaya/Laba Kotor */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-                    <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Distribusi Laba Kotor</h3>
-                    
-                    {/* INTEGRASI GRAFIK DONUT */}
-                    <ProfitDistributionChart />
-                    
-                    <p className="text-sm font-medium text-gray-700 mt-2">
-                        Margin Rata-rata: <span className="text-green-600 font-bold">45%</span>
-                    </p>
-                    <p className="text-xs text-gray-500">
-                        Pastikan Harga Pokok Penjualan (HPP) sudah diinput dengan benar.
-                    </p>
-                </div>
+            <div>
+                <p className="text-sm font-medium text-slate-500">Total Transaksi Sukses</p>
+                <h3 className="text-2xl font-bold text-slate-800 mt-1">{data.totalOrders}</h3>
             </div>
-
-            {/* 3. TABEL DETAIL: Laporan Produk Terlaris (TIDAK BERUBAH) */}
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-                <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Top 4 Produk Berdasarkan Revenue</h3>
-                
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peringkat</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Produk</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Terjual/Sewa</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {mockTopProducts.map((product, index) => (
-                                <tr key={product.name} className={index < 2 ? 'bg-indigo-50/50' : ''}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">#{index + 1}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.units} unit</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right text-gray-800">Rp {product.revenue.toLocaleString('id-ID')}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
         </div>
-    );
+      </div>
+
+      {/* 2. GRAFIK & TABEL (Grid Layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* GRAFIK MANUAL (Simple CSS Bar Chart) */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <div className="flex items-center gap-2 mb-6">
+                <TrendingUp className="text-indigo-600" size={20} />
+                <h3 className="text-lg font-bold text-gray-800">Tren Pendapatan Bulanan</h3>
+            </div>
+            
+            {data.chartData.length > 0 ? (
+                <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 mt-8">
+                    {data.chartData.map((item: any, idx: number) => {
+                        // Hitung tinggi bar (persentase dari max value)
+                        const maxVal = Math.max(...data.chartData.map((d: any) => d.value));
+                        const heightPercent = maxVal > 0 ? (item.value / maxVal) * 100 : 0;
+                        
+                        return (
+                            <div key={idx} className="flex-1 flex flex-col items-center group">
+                                {/* Tooltip Hover */}
+                                <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs px-2 py-1 rounded absolute -mt-8">
+                                    {rp(item.value)}
+                                </div>
+                                {/* The Bar */}
+                                <div 
+                                    className="w-full bg-indigo-500 rounded-t-lg hover:bg-indigo-600 transition-all relative"
+                                    style={{ height: `${heightPercent}%`, minHeight: '4px' }}
+                                ></div>
+                                {/* Label Bulan */}
+                                <span className="text-xs text-gray-500 mt-2 font-medium">{item.name}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            ) : (
+                <div className="h-48 flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    Belum ada data grafik
+                </div>
+            )}
+        </div>
+
+        {/* TOP PRODUCTS LIST */}
+        <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Produk Terlaris</h3>
+            <div className="space-y-4">
+                {data.topProducts.length > 0 ? (
+                    data.topProducts.map((prod: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                                        {idx + 1}
+                                    </span>
+                                    <p className="text-sm font-medium text-gray-800 line-clamp-1">{prod.name}</p>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-0.5 ml-7">{prod.count} kali disewa</p>
+                            </div>
+                            <span className="text-sm font-bold text-indigo-600">
+                                {new Intl.NumberFormat('id-ID', { notation: "compact", compactDisplay: "short", style: "currency", currency: "IDR" }).format(prod.revenue)}
+                            </span>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-sm text-gray-400 text-center py-4">Belum ada data penjualan.</p>
+                )}
+            </div>
+            
+            {/* Info Box */}
+            <div className="mt-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="text-xs text-blue-700 leading-relaxed">
+                    <strong>Tips:</strong> Data ini dihitung berdasarkan pesanan yang statusnya sudah "PAID" atau selesai.
+                </p>
+            </div>
+        </div>
+
+      </div>
+    </div>
+  );
 }

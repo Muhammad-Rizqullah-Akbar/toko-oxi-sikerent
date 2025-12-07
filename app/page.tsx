@@ -1,28 +1,37 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
-import CatalogSection from '@/components/products/catalogSection'; // Import komponen baru
+import CatalogSection from '@/components/products/catalogSection'; // Pastikan path import benar (huruf besar/kecil)
 import Header from '@/components/layout/Header';
 import HeroSection from '@/components/layout/HeroSection';
-import Footer from '@/components/layout/Footer';
 import { ShoppingBag, Zap, ShieldCheck, Truck } from 'lucide-react';
 
 type Props = {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function HomePage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const activeSlug = typeof resolvedSearchParams?.category === 'string' ? resolvedSearchParams.category : 'all';
 
-  // 1. FETCH INITIAL DATA (Server Side untuk SEO Pertama kali)
+  // 1. Fetch Kategori
   const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } });
   
-  // Fetch produk awal sesuai URL (misal user share link kategori tertentu)
-  const initialProducts = await prisma.product.findMany({
+  // 2. Fetch Produk (Data Mentah)
+  const rawProducts = await prisma.product.findMany({
     where: activeSlug !== 'all' ? { category: { slug: activeSlug } } : undefined,
     orderBy: { createdAt: 'desc' },
     include: { category: true } 
   });
+
+  // 3. [PENTING] KONVERSI DECIMAL KE NUMBER
+  // Ini solusi untuk error "Decimal objects are not supported"
+  const safeProducts = rawProducts.map((product) => ({
+    ...product,
+    price: Number(product.price), // Ubah Decimal ke Number
+    // Jika ada error tanggal, uncomment baris bawah:
+    // createdAt: product.createdAt.toISOString(),
+    // updatedAt: product.updatedAt.toISOString(),
+  }));
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans">
@@ -52,14 +61,12 @@ export default async function HomePage({ searchParams }: Props) {
       </section>
 
       <main className="container mx-auto px-4 max-w-7xl pb-24 pt-12">
-        {/* Panggil Client Component Katalog Disini */}
+        {/* Kirim data yang sudah bersih (safeProducts) */}
         <CatalogSection 
             initialCategories={categories} 
-            initialProducts={initialProducts} 
+            initialProducts={safeProducts} 
         />
       </main>
-      
-      <Footer />
     </div>
   );
 }
