@@ -13,7 +13,7 @@ export interface CartItem {
 
 interface CartStore {
   items: CartItem[];
-  addItem: (product: any) => void;
+  addItem: (product: CartItem) => void;
   decreaseItem: (productId: string) => void; // Fungsi Baru: Kurangi Qty
   removeItem: (productId: string) => void;
   clearCart: () => void;

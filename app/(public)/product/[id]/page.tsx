@@ -7,29 +7,63 @@ import ProductActions from '@/components/products/ProductActions';
 import ProductCard from '@/components/products/ProductCard';
 import ProductInfoTabs from '@/components/products/ProductInfoTabs'; 
 import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 import { ChevronRight, Star, ShieldCheck, Zap, Package } from 'lucide-react';
 
+// --- 1. KONFIGURASI GAMBAR DEMO (Sama seperti di ProductCard) ---
+const DEMO_IMAGES = {
+  kamera: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  cetak: "https://images.unsplash.com/photo-1589561084771-04cf8b066063?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  papan: "https://images.unsplash.com/photo-1527518084957-4f722457c604?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  drone: "https://images.unsplash.com/photo-1574315042633-89d04f66a6a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  audio: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  projector: "https://images.unsplash.com/photo-1623631915362-0c0303305135?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  default: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+};
+
+// Helper untuk memilih gambar berdasarkan nama
+const getDisplayImage = (imageUrl: string | null, productName: string) => {
+  if (imageUrl) return imageUrl; // Prioritaskan gambar dari DB
+
+  const lowerName = productName.toLowerCase();
+  if (lowerName.includes('kamera') || lowerName.includes('cam')) return DEMO_IMAGES.kamera;
+  if (lowerName.includes('cetak') || lowerName.includes('spanduk') || lowerName.includes('banner')) return DEMO_IMAGES.cetak;
+  if (lowerName.includes('papan') || lowerName.includes('nama')) return DEMO_IMAGES.papan;
+  if (lowerName.includes('drone')) return DEMO_IMAGES.drone;
+  if (lowerName.includes('sound') || lowerName.includes('mic') || lowerName.includes('speaker')) return DEMO_IMAGES.audio;
+  if (lowerName.includes('proyektor')) return DEMO_IMAGES.projector;
+  
+  return DEMO_IMAGES.default;
+};
+
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>; // Update Next.js 15: params adalah Promise
 }
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const resolvedParams = await params;
   const productId = resolvedParams.id;
 
-  // 1. AMBIL DATA PRODUK
-  const product = await prisma.product.findUnique({
+  // 2. AMBIL DATA PRODUK
+  const productRaw = await prisma.product.findUnique({
     where: { id: productId },
     include: { category: true }
   });
 
-  if (!product) {
+  if (!productRaw) {
     notFound();
   }
 
-  // 2. RELATED PRODUCTS
-  const relatedProducts = await prisma.product.findMany({
+  // 3. KONVERSI DECIMAL KE NUMBER & SETUP GAMBAR
+  // Ini penting agar tidak error saat dikirim ke Client Component (ProductActions)
+  const product = {
+    ...productRaw,
+    price: Number(productRaw.price),
+  };
+
+  const displayImage = getDisplayImage(product.imageUrl, product.name);
+
+  // 4. RELATED PRODUCTS
+  const relatedProductsRaw = await prisma.product.findMany({
     where: {
       categoryId: product.categoryId,
       id: { not: productId }
@@ -38,6 +72,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
     orderBy: { createdAt: 'desc' },
     include: { category: true }
   });
+
+  // Konversi related products juga
+  const relatedProducts = relatedProductsRaw.map(p => ({
+    ...p,
+    price: Number(p.price)
+  }));
 
   const isPrinting = product.category.name.toLowerCase().includes('cetak');
   const badgeColor = isPrinting ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-blue-100 text-blue-700 border-blue-200';
@@ -50,12 +90,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <div className="container mx-auto px-4 max-w-7xl pt-24 pb-4">
         <div className="flex items-center gap-2 text-sm text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
             <Link href="/" className="hover:text-indigo-600 transition-colors">Home</Link>
-            {/* FIX: flex-shrink-0 -> shrink-0 */}
             <ChevronRight className="w-3 h-3 shrink-0" />
             <Link href={`/?category=${product.category.slug}`} className="hover:text-indigo-600 transition-colors">{product.category.name}</Link>
-            {/* FIX: flex-shrink-0 -> shrink-0 */}
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-slate-900 font-medium">{product.name}</span>
+            <span className="text-slate-900 font-medium truncate max-w-[200px]">{product.name}</span>
         </div>
       </div>
 
@@ -65,11 +103,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6 lg:p-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 
-                {/* KOLOM KIRI */}
+                {/* KOLOM KIRI (GAMBAR) */}
                 <div className="lg:col-span-5 space-y-4">
                     <div className="relative aspect-square w-full bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 shadow-inner group">
+                        {/* GUNAKAN displayImage YANG SUDAH DIHITUNG */}
                         <Image 
-                            src={product.imageUrl || '/images/placeholder.jpg'} 
+                            src={displayImage} 
                             alt={product.name}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-700"
@@ -82,12 +121,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
                          )}
                     </div>
                     
+                    {/* Thumbnail (Sementara pakai gambar sama karena belum ada fitur multi-image) */}
                     <div className="grid grid-cols-4 gap-3">
                         {[1, 2, 3, 4].map((i) => (
                             <div key={i} className={`relative aspect-square bg-slate-50 rounded-xl overflow-hidden border cursor-pointer transition-all ${i===1 ? 'border-indigo-600 ring-2 ring-indigo-100 opacity-100' : 'border-slate-200 hover:border-indigo-300 opacity-70 hover:opacity-100'}`}>
                                  <Image 
-                                    src={product.imageUrl || '/images/placeholder.jpg'} 
-                                    alt="thumb"
+                                    src={displayImage} 
+                                    alt={`thumb-${i}`}
                                     fill
                                     className="object-cover"
                                 />
@@ -107,7 +147,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                {/* KOLOM KANAN */}
+                {/* KOLOM KANAN (INFO) */}
                 <div className="lg:col-span-7 flex flex-col">
                     
                     <div className="mb-6 border-b border-slate-50 pb-6">
@@ -145,7 +185,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
                         </div>
                     </div>
 
-                    {/* FIX: flex-grow -> grow */}
                     <div className="grow">
                          <ProductInfoTabs 
                             description={product.description} 
@@ -154,12 +193,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     </div>
 
                     <div className="mt-8 pt-6 border-t border-slate-100">
+                         {/* Kirim data yang sudah di-convert harganya (Number) dan Image URL yang benar */}
                          <ProductActions 
                             product={{
                                 id: product.id,
                                 name: product.name,
-                                price: product.price,
-                                imageUrl: product.imageUrl,
+                                price: product.price, // Sudah number
+                                imageUrl: displayImage, // Gunakan gambar demo/asli
                                 categoryName: product.category.name,
                                 stock: product.stock
                             }} 
@@ -188,9 +228,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
                         key={relProduct.id}
                         id={relProduct.id}
                         name={relProduct.name}
-                        price={relProduct.price}
-                        imageUrl={relProduct.imageUrl || ''}
-                        // Error TS Anda sebelumnya hilang karena sekarang ProductCard sudah menerima categoryName
+                        price={relProduct.price} // Sudah number
+                        imageUrl={relProduct.imageUrl || ''} // ProductCard akan menangani demo image sendiri
                         categoryName={relProduct.category.name} 
                     />
                 ))}
@@ -204,7 +243,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </div>
 
       </main>
-      <Footer />
     </div>
   );
 }

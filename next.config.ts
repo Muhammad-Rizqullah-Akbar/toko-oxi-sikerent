@@ -14,7 +14,8 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '*.supabase.co', // Izinkan gambar dari Supabase (persiapan nanti)
-      },
+      }, 
+      
     ],
   },
 };

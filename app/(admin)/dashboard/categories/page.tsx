@@ -1,6 +1,6 @@
 // app/(admin)/dashboard/categories/page.tsx
 import { prisma } from '@/lib/prisma';
-import { createCategory, deleteCategory } from '@/app/actions/inventory';
+import { createCategory, deleteCategory } from '@/app/actions/category';
 
 export default async function CategoriesPage() {
   // Ambil data kategori dari database

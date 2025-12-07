@@ -5,6 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, Star, Check, Plus, Minus, Trash2, CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
+import { useSession } from 'next-auth/react'; // [BARU] Cek Login
+import { addToCartDB, updateCartItemQuantity } from '@/app/actions/cart'; // [BARU] Server Actions
+import { CartItemType } from '@prisma/client'; // [BARU] Enum Type
 
 const DEMO_IMAGES = {
   kamera: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -25,20 +28,18 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ id, name, price, imageUrl, categoryName }: ProductCardProps) {
+  const { data: session } = useSession(); // [BARU] Ambil sesi user
   const { items, addItem, removeItem, decreaseItem } = useCart(); 
   const [isLoading, setIsLoading] = useState(true);
   
   // State Popup
   const [showQtyPopup, setShowQtyPopup] = useState(false);
-  const [qtyDisplay, setQtyDisplay] = useState(1); // Angka yang ditampilkan di popup
+  const [qtyDisplay, setQtyDisplay] = useState(1); 
 
-  // 1. Cek apakah item sudah ada & ambil jumlahnya
   const cartItem = useMemo(() => items.find((item) => item.id === id), [items, id]);
   const isInCart = Boolean(cartItem);
 
-  // [FIX] useEffect dihapus. Sinkronisasi dilakukan di handleMainButtonClick
-
-  // Logic Gambar & Badge
+  // --- Logic Gambar & Badge ---
   const getDemoImageByName = (productName: string) => {
     const lowerName = productName.toLowerCase();
     if (lowerName.includes('kamera') || lowerName.includes('cam')) return DEMO_IMAGES.kamera;
@@ -54,45 +55,70 @@ export default function ProductCard({ id, name, price, imageUrl, categoryName }:
   const isPrinting = categoryName ? (categoryName.toLowerCase().includes('cetak') || name.toLowerCase().includes('cetak')) : false;
   const badgeColor = isPrinting ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
 
-  // --- HANDLER UTAMA ---
-  const handleMainButtonClick = (e: React.MouseEvent) => {
+  // --- HANDLER UTAMA (Add New) ---
+  const handleMainButtonClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (isInCart) {
-      // [FIX] Update state qtyDisplay DI SINI, sebelum popup muncul
+      // Jika sudah ada, buka popup edit jumlah
       if (cartItem) {
         setQtyDisplay(cartItem.quantity);
       }
-      setShowQtyPopup(true); // Buka popup edit
+      setShowQtyPopup(true); 
     } else {
+      // 1. Update UI Local (Optimistic)
       addItem({ id, name, price, imageUrl: displayImage, category: categoryName || 'Umum', quantity: 1 });
+      
+      // 2. [HYBRID] Jika Login, Simpan ke DB
+      if (session?.user) {
+        try {
+          await addToCartDB({
+            productId: id,
+            quantity: 1,
+            itemType: CartItemType.PRODUCT, // Default type
+          });
+        } catch (error) {
+          console.error("Gagal sync ke DB:", error);
+          // Opsional: Revert state local jika DB gagal (jarang dilakukan utk UX speed)
+        }
+      }
     }
   };
 
-  // --- LOGIC UPDATE KERANJANG ---
-  const handleUpdateCart = (e: React.MouseEvent) => {
+  // --- LOGIC UPDATE KERANJANG (Edit Qty via Popup) ---
+  const handleUpdateCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!cartItem) return;
 
+    // --- A. LOGIC UI LOCAL (ZUSTAND) ---
+    // Tetap jalankan ini agar UI responsif instan
     if (qtyDisplay === 0) {
-      // KASUS 1: User set ke 0 -> Hapus Item
       removeItem(id);
     } else {
-      // KASUS 2: Update Jumlah
       const diff = qtyDisplay - cartItem.quantity;
       if (diff > 0) {
-        // Tambah selisihnya
         addItem({ id, name, price, imageUrl: displayImage, category: categoryName || 'Umum', quantity: diff });
       } else if (diff < 0) {
-        // Kurangi selisihnya (loop decreaseItem karena hook biasanya cuma kurangi 1)
         for (let i = 0; i < Math.abs(diff); i++) {
           decreaseItem(id);
         }
       }
     }
+
+    // --- B. [HYBRID] LOGIC DATABASE ---
+    // Kirim final quantity (qtyDisplay) ke server
+    if (session?.user) {
+      try {
+         // Kita pakai fungsi khusus update quantity biar aman, bukan add lagi
+         await updateCartItemQuantity(id, qtyDisplay);
+      } catch (error) {
+         console.error("Gagal update qty DB:", error);
+      }
+    }
+
     setShowQtyPopup(false);
   };
 
@@ -194,7 +220,6 @@ export default function ProductCard({ id, name, price, imageUrl, categoryName }:
         </div>
 
         {/* Content Produk */}
-        {/* [FIX] flex-grow diubah jadi grow */}
         <div className="p-4 flex flex-col grow">
           <h3 className="text-slate-800 font-bold text-sm sm:text-base mb-1 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors">
             {name}

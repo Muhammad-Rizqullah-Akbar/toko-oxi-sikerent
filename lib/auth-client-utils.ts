@@ -1,9 +1,18 @@
 // lib/auth-client-utils.ts
+'use client';
 
-// Kita impor semua eksport dari auth.ts di root project
-import * as authExports from '@/auth'; 
+import { signIn, signOut as nextAuthSignOut } from "next-auth/react";
 
-// [FIX UTAMA] Ekspor ulang fungsi auth dan signOut
-// Ini memaksa modul untuk dievaluasi dengan benar di runtime.
-export const auth = authExports.auth;
-export const signOut = authExports.signOut;
+export { signIn };
+
+export async function signOut(options?: { 
+  redirect?: boolean; 
+  redirectTo?: string;
+}) {
+  const { redirect = true, redirectTo = "/" } = options || {};
+  
+  await nextAuthSignOut({ 
+    redirect, 
+    callbackUrl: redirectTo 
+  });
+}
